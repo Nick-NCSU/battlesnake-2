@@ -2,7 +2,7 @@
 .cmd
 .idea
 .vscode
-.upm
+.upm/
 
 node_modules
 build
