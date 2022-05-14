@@ -95,6 +95,55 @@ export function move(gameState: GameState): MoveResponse {
         }
     }
 
+    // Flood Fill
+    for(const direction of Object.keys(validMoves)) {
+        let total:number = 0;
+        if(validMoves[direction as keyof typeof validMoves]) {
+            const newBoard:Board = board.clone();
+
+            const newHead:Coord = { x: myHead.x, y: myHead.y };
+            switch(direction) {
+                case "up":
+                    newHead.y++;
+                    break;
+                case "down":
+                    newHead.y--;
+                    break;
+                case "left":
+                    newHead.x--;
+                    break;
+                case "right":
+                    newHead.x++;
+                    break;
+            }
+            newBoard.setType(newHead, TileType.HEAD);
+            newBoard.setType(myHead, TileType.BODY);
+
+            const stack = [];
+            const visited:Set<Coord> = new Set();
+            for(const neighbor of newBoard.getNeighbors(newHead!)) {
+                if(!visited.has(neighbor.coord)) {
+                    stack.push(neighbor.coord);
+                }
+            }
+            stack.push(newHead);
+            while(stack.length) {
+                const coord = stack.pop();
+                if(newBoard.validMove(coord!) && !visited.has(coord!)) {
+                    total++;
+                    visited.add(coord!);
+                    for(const neighbor of newBoard.getNeighbors(coord!)) {
+                        if(!visited.has(neighbor.coord)) {
+                            stack.push(neighbor.coord);
+                        }
+                    }
+                }
+            }
+        }
+        moveWeights[direction as keyof typeof moveWeights] -= total < 20 ? (20 - total) * 10 : 0;
+    }
+    
+
     // Filter out invalid moves
     for(const direction of Object.keys(validMoves)) {
         if(!validMoves[direction as keyof typeof validMoves]) {

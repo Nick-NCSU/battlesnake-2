@@ -2,9 +2,9 @@ import { Coord } from "./types.d"
 import { Tile, TileType } from "./types"
 
 export class Board {
-    private width: number;
-    private height: number;
-    private tiles: Tile[][];
+    protected width: number;
+    protected height: number;
+    protected tiles: Tile[][];
     constructor(width: number, height: number) {
         this.width = width;
         this.height = height;
@@ -122,4 +122,11 @@ export class Board {
         }
         return str;
     }
+
+    clone(): Board {
+        let board = new Board(this.width, this.height);
+        board.tiles = JSON.parse(JSON.stringify(this.tiles));
+        return board;
+    }
+        
 }

@@ -140,4 +140,36 @@ describe('Battlesnake Moves', () => {
             expect(allowedMoves).toContain(moveResponse.move)
         }
     })
+
+    it('should not trap itself to a wall', () => {
+        const me:Battlesnake = createBattlesnake("me", [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 0 }, { x: 2, y: 0 }])
+        const gameState:GameState = createGameState(me)
+        
+        // Act 1,000x (this isn't a great way to test, but it's okay for starting out)
+        for (let i = 0; i < 1000; i++) {
+            const moveResponse: MoveResponse = move(gameState)
+            // In this state, we should NEVER move left, right, or down.
+            const allowedMoves = ["up"]
+            expect(allowedMoves).toContain(moveResponse.move)
+        }
+    })
+
+    it('should not trap itself to itself', () => {
+        const me:Battlesnake = createBattlesnake("me", [
+            { x: 4, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 2 }, { x: 3, y: 3 },
+            { x: 3, y: 4 }, { x: 3, y: 5 }, { x: 4, y: 5 }, { x: 5, y: 5 },
+            { x: 5, y: 4 }, { x: 5, y: 3 }, { x: 5, y: 2 }, { x: 6, y: 2 },
+            { x: 6, y: 3 }, { x: 6, y: 4 }, { x: 6, y: 5 }])
+        const gameState:GameState = createGameState(me)
+
+        gameState.board.food = [{ x: 4, y: 2 }, { x: 4, y: 3 }, { x: 4, y: 4 }]
+        
+        // Act 1,000x (this isn't a great way to test, but it's okay for starting out)
+        for (let i = 0; i < 1000; i++) {
+            const moveResponse: MoveResponse = move(gameState)
+            // In this state, we should NEVER move left, right, or down.
+            const allowedMoves = ["down", "right"]
+            expect(allowedMoves).toContain(moveResponse.move)
+        }
+    })
 })
