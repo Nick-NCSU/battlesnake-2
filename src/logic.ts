@@ -1,4 +1,6 @@
-import { InfoResponse, GameState, MoveResponse, Game } from "./types"
+import { InfoResponse, GameState, MoveResponse, Game, Coord } from "./types.d"
+import { Board } from "./Board"
+import { TileType } from "./types"
 
 export function info(): InfoResponse {
     console.log("INFO")
@@ -21,48 +23,104 @@ export function end(gameState: GameState): void {
 }
 
 export function move(gameState: GameState): MoveResponse {
-    let possibleMoves: { [key: string]: boolean } = {
-        up: true,
-        down: true,
-        left: true,
-        right: true
+    // Create the board
+    const board:Board = new Board(gameState.board.width, gameState.board.height);
+
+    // Add all snakes to the board
+    for(const snake of gameState.board.snakes) {
+        for(const coord of snake.body) {
+            board.setType(coord, TileType.BODY);
+            board.setId(coord, snake.id);
+        }
+        board.setType(snake.head, TileType.HEAD);
+        board.setType(snake.body[snake.body.length - 1], TileType.TAIL);
     }
 
-    // Step 0: Don't let your Battlesnake move back on it's own neck
-    const myHead = gameState.you.head
-    const myNeck = gameState.you.body[1]
-    if (myNeck.x < myHead.x) {
-        possibleMoves.left = false
-    } else if (myNeck.x > myHead.x) {
-        possibleMoves.right = false
-    } else if (myNeck.y < myHead.y) {
-        possibleMoves.down = false
-    } else if (myNeck.y > myHead.y) {
-        possibleMoves.up = false
+    // Add all food to the board
+    for(const food of gameState.board.food) {
+        board.setType(food, TileType.FOOD);
     }
 
-    // TODO: Step 1 - Don't hit walls.
-    // Use information in gameState to prevent your Battlesnake from moving beyond the boundaries of the board.
-    // const boardWidth = gameState.board.width
-    // const boardHeight = gameState.board.height
+    // Add all hazards to the board
+    for(const hazard of gameState.board.hazards) {
+        board.setHazard(hazard, true);
+    }
 
-    // TODO: Step 2 - Don't hit yourself.
-    // Use information in gameState to prevent your Battlesnake from colliding with itself.
-    // const mybody = gameState.you.body
+    console.log(board.toString());
+    
+    const myHead:Coord = gameState.you.head;
+    // Finds all valid moves
+    let validMoves = {
+        up: board.validMove({ x: myHead.x, y: myHead.y + 1 }),
+        down: board.validMove({ x: myHead.x, y: myHead.y - 1 }),
+        left: board.validMove({ x: myHead.x - 1, y: myHead.y }),
+        right: board.validMove({ x: myHead.x + 1, y: myHead.y })
+    }
+    // Initializes weights for each direction
+    let moveWeights = {
+        up: 0,
+        down: 0,
+        left: 0,
+        right: 0
+    }
 
-    // TODO: Step 3 - Don't collide with others.
-    // Use information in gameState to prevent your Battlesnake from colliding with others.
+    for(const neighbor of board.getNeighbors(myHead)) {
+        // If the neighbor is a tail, subtract a weight of 100 if the head is adjacent to food
+        if(neighbor.type === TileType.TAIL) {
+            if(board.getNeighbors(board.findHead(neighbor.id!)).filter(tile => tile.type === TileType.FOOD).length !== 0) {
+                moveWeights[Board.getDirection(myHead, neighbor.coord) as keyof typeof moveWeights] -= 100;
+            }
+        }
+        // If the neighbor is a valid move
+        if(board.validMove(neighbor.coord)) {
+            // Check all neighbors of the neighbor
+            for(const neighbor2 of board.getNeighbors(neighbor.coord)) {
+                // If the neighbor2 is a head and our snake is bigger, add a weight of 20.
+                // Otherwise subtract a weight of 500.
+                if(neighbor2.type === TileType.HEAD && neighbor2.id !== gameState.you.id) {
+                    moveWeights[Board.getDirection(myHead, neighbor.coord) as keyof typeof moveWeights] += gameState.you.length > board.findSnake(neighbor2.id!).length ? 20 : -500;
+                }
+            }
+        }
+    }
 
-    // TODO: Step 4 - Find food.
-    // Use information in gameState to seek out and find food.
+    // Add weight for each food
+    for (const food of gameState.board.food) {
+        if (food.x < myHead.x) {
+            moveWeights.left++;
+        } else if (food.x > myHead.x) {
+            moveWeights.right++;
+        } else if (food.y < myHead.y) {
+            moveWeights.down++;
+        } else if (food.y > myHead.y) {
+            moveWeights.up++;
+        }
+    }
 
-    // Finally, choose a move from the available safe moves.
-    // TODO: Step 5 - Select a move to make based on strategy, rather than random.
-    const safeMoves = Object.keys(possibleMoves).filter(key => possibleMoves[key])
-    const response: MoveResponse = {
+    // Filter out invalid moves
+    for(const direction of Object.keys(validMoves)) {
+        if(!validMoves[direction as keyof typeof validMoves]) {
+            delete moveWeights[direction as keyof typeof moveWeights];
+        }
+    }
+
+    // Find the maximum weight
+    const max:number = Math.max(...Object.values(moveWeights));
+    
+    // Find the direction(s) with the maximum weight
+    for(const direction of Object.keys(moveWeights)) {
+        if(moveWeights[direction as keyof typeof moveWeights] !== max) {
+            delete moveWeights[direction as keyof typeof moveWeights];
+        }
+    }
+
+    // Return a random direction with the maximum weight
+    const safeMoves = Object.keys(moveWeights);
+    const response = {
         move: safeMoves[Math.floor(Math.random() * safeMoves.length)],
     }
 
-    console.log(`${gameState.game.id} MOVE ${gameState.turn}: ${response.move}`)
+    //console.log(`${myHead.x}/${boardWidth} ${myHead.y}/${boardHeight} ${safeMoves}`)
+    console.log(`${new Date().toISOString().slice(11, -1)} ${gameState.game.id} MOVE ${gameState.turn}: ${response.move}`)
     return response
 }

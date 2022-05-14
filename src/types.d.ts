@@ -29,6 +29,8 @@ export interface RulesetSettings {
     foodSpawnChance: number;
     minimumFood: number;
     hazardDamagePerTurn: number;
+    hazardMap: string;
+    hazardMapAuthor: string;
     royale:RoyaleSettings;
     squad:SquadSettings;
 }
@@ -59,10 +61,18 @@ export interface Battlesnake {
     latency: string;
     head: Coord;
     length: number;
+    customizations: SnakeCustomizations;
 
     // Used in non-standard game modes
     shout: string;
     squad: string;
+
+}
+
+export interface SnakeCustomizations {
+    color: string;
+    head: string;
+    tail: string;
 }
 
 export interface Board {
