@@ -32,8 +32,8 @@ export function move(gameState: GameState): MoveResponse {
             board.setType(coord, TileType.BODY);
             board.setId(coord, snake.id);
         }
-        board.setType(snake.head, TileType.HEAD);
         board.setType(snake.body[snake.body.length - 1], TileType.TAIL);
+        board.setType(snake.head, TileType.HEAD);
     }
 
     // Add all food to the board
@@ -65,6 +65,9 @@ export function move(gameState: GameState): MoveResponse {
     for(const neighbor of board.getNeighbors(myHead)) {
         // If the neighbor is a tail, subtract a weight of 100 if the head is adjacent to food
         if(neighbor.type === TileType.TAIL) {
+            if(board.findSnake(neighbor.id!).length < 3) {
+                validMoves[Board.getDirection(myHead, neighbor.coord) as keyof typeof validMoves] = false;
+            }
             if(board.getNeighbors(board.findHead(neighbor.id!)).filter(tile => tile.type === TileType.FOOD).length !== 0) {
                 moveWeights[Board.getDirection(myHead, neighbor.coord) as keyof typeof moveWeights] -= 100;
             }

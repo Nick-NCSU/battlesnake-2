@@ -172,4 +172,17 @@ describe('Battlesnake Moves', () => {
             expect(allowedMoves).toContain(moveResponse.move)
         }
     })
+
+    it('should not move onto itself', () => {
+        const me:Battlesnake = createBattlesnake("me", [{ x: 3, y: 3 }, { x: 4, y: 3 }])
+        const gameState:GameState = createGameState(me)
+        
+        // Act 1,000x (this isn't a great way to test, but it's okay for starting out)
+        for (let i = 0; i < 1000; i++) {
+            const moveResponse: MoveResponse = move(gameState)
+            // In this state, we should NEVER move left, right, or down.
+            const allowedMoves = ["up", "down", "left"]
+            expect(allowedMoves).toContain(moveResponse.move)
+        }
+    })
 })
