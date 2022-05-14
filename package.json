@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "prestart": "npm run build",
-    "start": "node build/index.js",
+    "start": "node build/src/index.js",
     "test": "jest"
   },
   "repository": {
