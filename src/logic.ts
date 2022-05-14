@@ -45,8 +45,6 @@ export function move(gameState: GameState): MoveResponse {
     for(const hazard of gameState.board.hazards) {
         board.setHazard(hazard, true);
     }
-
-    console.log(board.toString());
     
     const myHead:Coord = gameState.you.head;
     // Finds all valid moves
