@@ -15,6 +15,7 @@ export function info(): InfoResponse {
 }
 
 export function start(gameState: GameState): void {
+    console.log(gameState.game.ruleset.settings);
     console.log(`${gameState.game.id} START`)
 }
 
@@ -24,11 +25,11 @@ export function end(gameState: GameState): void {
 
 export function move(gameState: GameState): MoveResponse {
     // Create the board
-    const board:Board = new Board(gameState.board.width, gameState.board.height);
+    const board: Board = new Board(gameState.board.width, gameState.board.height);
 
     // Add all snakes to the board
-    for(const snake of gameState.board.snakes) {
-        for(const coord of snake.body) {
+    for (const snake of gameState.board.snakes) {
+        for (const coord of snake.body) {
             board.setType(coord, TileType.BODY);
             board.setId(coord, snake.id);
         }
@@ -37,22 +38,22 @@ export function move(gameState: GameState): MoveResponse {
     }
 
     // Add all food to the board
-    for(const food of gameState.board.food) {
+    for (const food of gameState.board.food) {
         board.setType(food, TileType.FOOD);
     }
 
     // Add all hazards to the board
-    for(const hazard of gameState.board.hazards) {
+    for (const hazard of gameState.board.hazards) {
         board.setHazard(hazard, true);
     }
-    
-    const myHead:Coord = gameState.you.head;
+
+    const myHead: Coord = gameState.you.head;
     // Finds all valid moves
     let validMoves = {
-        up: board.validMove({ x: myHead.x, y: myHead.y + 1 }),
-        down: board.validMove({ x: myHead.x, y: myHead.y - 1 }),
-        left: board.validMove({ x: myHead.x - 1, y: myHead.y }),
-        right: board.validMove({ x: myHead.x + 1, y: myHead.y })
+        up: board.validMove({ x: myHead.x, y: myHead.y + 1 }, gameState),
+        down: board.validMove({ x: myHead.x, y: myHead.y - 1 }, gameState),
+        left: board.validMove({ x: myHead.x - 1, y: myHead.y }, gameState),
+        right: board.validMove({ x: myHead.x + 1, y: myHead.y }, gameState)
     }
     // Initializes weights for each direction
     let moveWeights = {
@@ -62,23 +63,26 @@ export function move(gameState: GameState): MoveResponse {
         right: 0
     }
 
-    for(const neighbor of board.getNeighbors(myHead)) {
+    for (const neighbor of board.getNeighbors(myHead)) {
         // If the neighbor is a tail, subtract a weight of 100 if the head is adjacent to food
-        if(neighbor.type === TileType.TAIL) {
-            if(board.findSnake(neighbor.id!).length < 3) {
+        if (neighbor.type === TileType.TAIL) {
+            if (board.findSnake(neighbor.id!).length < 3) {
                 validMoves[Board.getDirection(myHead, neighbor.coord) as keyof typeof validMoves] = false;
             }
-            if(board.getNeighbors(board.findHead(neighbor.id!)).filter(tile => tile.type === TileType.FOOD).length !== 0) {
+            if (board.getNeighbors(board.findHead(neighbor.id!)).filter(tile => tile.type === TileType.FOOD).length !== 0) {
                 moveWeights[Board.getDirection(myHead, neighbor.coord) as keyof typeof moveWeights] -= 100;
             }
         }
+        if (neighbor.hazard) {
+            moveWeights[Board.getDirection(myHead, neighbor.coord) as keyof typeof moveWeights] -= 10 * gameState.game.ruleset.settings.hazardDamagePerTurn;
+        }
         // If the neighbor is a valid move
-        if(board.validMove(neighbor.coord)) {
+        if (board.validMove(neighbor.coord, gameState)) {
             // Check all neighbors of the neighbor
-            for(const neighbor2 of board.getNeighbors(neighbor.coord)) {
+            for (const neighbor2 of board.getNeighbors(neighbor.coord)) {
                 // If the neighbor2 is a head and our snake is bigger, add a weight of 20.
                 // Otherwise subtract a weight of 500.
-                if(neighbor2.type === TileType.HEAD && neighbor2.id !== gameState.you.id) {
+                if (neighbor2.type === TileType.HEAD && neighbor2.id !== gameState.you.id) {
                     moveWeights[Board.getDirection(myHead, neighbor.coord) as keyof typeof moveWeights] += gameState.you.length > board.findSnake(neighbor2.id!).length ? 20 : -500;
                 }
             }
@@ -89,23 +93,26 @@ export function move(gameState: GameState): MoveResponse {
     for (const food of gameState.board.food) {
         if (food.x < myHead.x) {
             moveWeights.left++;
-        } else if (food.x > myHead.x) {
+        }
+        if (food.x > myHead.x) {
             moveWeights.right++;
-        } else if (food.y < myHead.y) {
+        }
+        if (food.y < myHead.y) {
             moveWeights.down++;
-        } else if (food.y > myHead.y) {
+        }
+        if (food.y > myHead.y) {
             moveWeights.up++;
         }
     }
 
     // Flood Fill
-    for(const direction of Object.keys(validMoves)) {
-        let total:number = 0;
-        if(validMoves[direction as keyof typeof validMoves]) {
-            const newBoard:Board = board.clone();
+    for (const direction of Object.keys(validMoves)) {
+        let total: number = 0;
+        if (validMoves[direction as keyof typeof validMoves]) {
+            const newBoard: Board = board.clone();
 
-            const newHead:Coord = { x: myHead.x, y: myHead.y };
-            switch(direction) {
+            const newHead: Coord = { x: myHead.x, y: myHead.y };
+            switch (direction) {
                 case "up":
                     newHead.y++;
                     break;
@@ -123,20 +130,20 @@ export function move(gameState: GameState): MoveResponse {
             newBoard.setType(myHead, TileType.BODY);
 
             const stack = [];
-            const visited:Set<Coord> = new Set();
-            for(const neighbor of newBoard.getNeighbors(newHead!)) {
-                if(!visited.has(neighbor.coord)) {
+            const visited: Set<Coord> = new Set();
+            for (const neighbor of newBoard.getNeighbors(newHead!)) {
+                if (!visited.has(neighbor.coord)) {
                     stack.push(neighbor.coord);
                 }
             }
             stack.push(newHead);
-            while(stack.length) {
+            while (stack.length) {
                 const coord = stack.pop();
-                if(newBoard.validMove(coord!) && !visited.has(coord!)) {
+                if (newBoard.validMove(coord!, gameState) && !visited.has(coord!)) {
                     total++;
                     visited.add(coord!);
-                    for(const neighbor of newBoard.getNeighbors(coord!)) {
-                        if(!visited.has(neighbor.coord)) {
+                    for (const neighbor of newBoard.getNeighbors(coord!)) {
+                        if (!visited.has(neighbor.coord)) {
                             stack.push(neighbor.coord);
                         }
                     }
@@ -145,21 +152,21 @@ export function move(gameState: GameState): MoveResponse {
         }
         moveWeights[direction as keyof typeof moveWeights] -= total < 20 ? (20 - total) * 10 : 0;
     }
-    
+
 
     // Filter out invalid moves
-    for(const direction of Object.keys(validMoves)) {
-        if(!validMoves[direction as keyof typeof validMoves]) {
+    for (const direction of Object.keys(validMoves)) {
+        if (!validMoves[direction as keyof typeof validMoves]) {
             delete moveWeights[direction as keyof typeof moveWeights];
         }
     }
 
     // Find the maximum weight
-    const max:number = Math.max(...Object.values(moveWeights));
-    
+    const max: number = Math.max(...Object.values(moveWeights));
+
     // Find the direction(s) with the maximum weight
-    for(const direction of Object.keys(moveWeights)) {
-        if(moveWeights[direction as keyof typeof moveWeights] !== max) {
+    for (const direction of Object.keys(moveWeights)) {
+        if (moveWeights[direction as keyof typeof moveWeights] !== max) {
             delete moveWeights[direction as keyof typeof moveWeights];
         }
     }

@@ -31,8 +31,8 @@ export interface RulesetSettings {
     hazardDamagePerTurn: number;
     hazardMap: string;
     hazardMapAuthor: string;
-    royale:RoyaleSettings;
-    squad:SquadSettings;
+    royale: RoyaleSettings;
+    squad: SquadSettings;
 }
 
 export interface Ruleset {

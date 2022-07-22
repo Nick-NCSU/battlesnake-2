@@ -9,8 +9,8 @@ export enum TileType {
 }
 
 export interface Tile {
-    coord:Coord;
-    type:TileType;
-    id?:string;
-    hazard:boolean;
+    coord: Coord;
+    type: TileType;
+    id?: string;
+    hazard: boolean;
 }
